@@ -22,7 +22,9 @@ alias g="g++ -o"
 dotfiles() {
     if [[ "$1" == "add" ]] && [[ "$2" != /* ]] && [[ "$2" != ~* ]]; then
         local rel_to_home="${PWD#$HOME/}"
-        if [[ "$rel_to_home" != "$PWD" ]]; then
+        if [[ "$PWD" == "$HOME" ]]; then
+            (cd "$HOME" && /usr/bin/git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME add --force "$2")
+        elif [[ "$rel_to_home" != "$PWD" ]]; then
             (cd "$HOME" && /usr/bin/git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME add --force "$rel_to_home/$2")
         else
             echo "Error: Not in home directory tree"
