@@ -19,5 +19,17 @@ alias p="python3"
 alias g="g++ -o"
 
 # Dotfiles management
-alias config='/usr/bin/git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME'
+dotfiles() {
+    if [[ "$1" == "add" ]] && [[ "$2" != /* ]] && [[ "$2" != ~* ]]; then
+        local rel_to_home="${PWD#$HOME/}"
+        if [[ "$rel_to_home" != "$PWD" ]]; then
+            (cd "$HOME" && /usr/bin/git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME add --force "$rel_to_home/$2")
+        else
+            echo "Error: Not in home directory tree"
+            return 1
+        fi
+    else
+        (cd "$HOME" && /usr/bin/git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME "$@")
+    fi
+}
 alias lazydots='GIT_DIR=$HOME/.dotfiles GIT_WORK_TREE=$HOME lazygit'
