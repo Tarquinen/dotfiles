@@ -5,20 +5,36 @@
 # (don't mess with these directly, just overwrite them here!)
 source ~/.local/share/omarchy/default/bash/rc
 
-# Add your own exports, aliases, and functions here.
-#
-# Make an alias for invoking commands you use constantly
-# alias p='python'
+# ============================================================================
+# Environment Variables
+# ============================================================================
+export BUN_INSTALL="$HOME/.bun"
 
-# cd ./projects
+# ============================================================================
+# PATH
+# ============================================================================
+export PATH="$BUN_INSTALL/bin:$PATH"
+
+# ============================================================================
+# Source Additional Files
+# ============================================================================
+# Source secrets (not in version control)
+[ -f ~/.bash_secrets ] && source ~/.bash_secrets
+
+# ============================================================================
+# Aliases
+# ============================================================================
 alias config="cd ~/.config/nvim && nvim"
 alias windows="cd /mnt/c/Users/danny/"
 alias sv="source venv/bin/activate"
 alias pydev="python3 -m venv venv && sv && pip install --upgrade pip"
 alias p="python3"
 alias g="g++ -o"
+alias lazydots='GIT_DIR=$HOME/.dotfiles GIT_WORK_TREE=$HOME lazygit'
 
-# Dotfiles management
+# ============================================================================
+# Functions
+# ============================================================================
 dotfiles() {
     if [[ "$1" == "add" ]] && [[ "$2" != /* ]] && [[ "$2" != ~* ]]; then
         local rel_to_home="${PWD#$HOME/}"
@@ -34,4 +50,3 @@ dotfiles() {
         (cd "$HOME" && /usr/bin/git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME "$@")
     fi
 }
-alias lazydots='GIT_DIR=$HOME/.dotfiles GIT_WORK_TREE=$HOME lazygit'
