@@ -18,3 +18,10 @@ If NO argument is provided above (empty string):
 - If the current directory is not a Git repository, check child directories for Git repositories and commit and push changes in each one
 
 If changes are already committed (git status shows no staged/unstaged changes but branch is ahead of remote), only push to remote without creating a new commit.
+
+After completing the operation, provide a clear summary:
+- What repository/repositories were processed
+- Whether a commit was created (and the commit message if so)
+- Whether changes were pushed
+- The branch that was pushed to
+- Any errors or issues encountered
