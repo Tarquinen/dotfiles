@@ -31,18 +31,6 @@
         "gh_grep": {
             "type": "remote",
             "url": "https://mcp.grep.app/"
-        },
-        "firecrawl": {
-            "type": "local",
-            "command": [
-                "npx",
-                "-y",
-                "firecrawl-mcp"
-            ],
-            "environment": {
-                "FIRECRAWL_API_KEY": "{env:FIRECRAWL_API_KEY}"
-            },
-            "enabled": true
         }
     },
     "theme": "one-dark",
