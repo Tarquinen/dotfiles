@@ -25,12 +25,13 @@ export PATH="$BUN_INSTALL/bin:$PATH"
 # Aliases
 # ============================================================================
 alias config="cd ~/.config/nvim && nvim"
-alias windows="cd /mnt/c/Users/danny/"
+alias v="nvim"
 alias sv="source venv/bin/activate"
 alias pydev="python3 -m venv venv && sv && pip install --upgrade pip"
 alias p="python3"
 alias g="g++ -o"
 alias lazydots='GIT_DIR=$HOME/.dotfiles GIT_WORK_TREE=$HOME lazygit'
+alias oc="opencode"
 
 # ============================================================================
 # Functions
