@@ -107,11 +107,3 @@ const result = await generateText({
 ```
 
 Install the provider package and set the API key environment variable.
-
-## How It Works
-
-The plugin listens for user messages, extracts conversation context (first/last assistant responses per turn), sends it to the AI model via the Vercel AI SDK, and updates the session title. Runs in the background without blocking your workflow.
-
-## License
-
-MIT
