@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+vendor/
+
+# Lock files
+*.lock
+bun.lockb
+package-lock.json
+yarn.lock
+Cargo.lock
+Gemfile.lock
+poetry.lock
+
+# Build outputs
+dist/
+build/
+out/
+target/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
