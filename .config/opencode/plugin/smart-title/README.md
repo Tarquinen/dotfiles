@@ -1,39 +1,35 @@
-# Smart Title Plugin for OpenCode
+# Smart Title Plugin
 
-Automatically generates meaningful session titles for your OpenCode conversations using AI.
+Automatically generates meaningful session titles for OpenCode conversations using AI.
 
-## What It Does
+## How It Works
 
-Every time you send a message, the plugin:
+Every time you send a message:
 1. Extracts key conversation context (first and last assistant responses per turn)
 2. Sends it to GitHub Copilot GPT-5 mini
 3. Generates a concise, descriptive title (≤50 chars)
 4. Updates your session title automatically
 
-This uses 95% fewer tokens than sending full conversation history while maintaining accuracy.
+Uses 95% fewer tokens than sending full conversation history while maintaining accuracy.
 
 ## Setup
 
-### 1. Install and start copilot-api proxy
+### 1. Authenticate with GitHub Copilot (one-time)
 
 Requires active GitHub Copilot subscription.
 
 ```bash
-npm install -g copilot-api
 npx copilot-api auth
-npx copilot-api start
 ```
 
-Keep the proxy running in a separate terminal or as a background service.
-
-### 2. Install plugin dependencies
+### 2. Install dependencies
 
 ```bash
 cd ~/.config/opencode/plugin/smart-title
 bun install
 ```
 
-### 3. Enable in OpenCode config
+### 3. Enable plugin
 
 Add to `~/.config/opencode/opencode.json`:
 
@@ -47,44 +43,21 @@ Add to `~/.config/opencode/opencode.json`:
 
 ### 4. Restart OpenCode
 
-That's it! Titles will now update automatically as you chat.
+Done! Session titles will now update automatically.
 
 ## Configuration
 
-### Custom proxy URL
+**Custom proxy URL** (optional):
 
-Default: `http://localhost:4141/v1`
-
-To change:
 ```bash
-export COPILOT_API_URL=http://custom-host:port/v1
+export COPILOT_API_URL=http://custom-host:port
 ```
 
-## Troubleshooting
-
-### Proxy not running
-```bash
-npx copilot-api start
-```
-
-### Authentication failed
-```bash
-npx copilot-api auth
-```
-
-### Check debug log
-```bash
-tail -f /tmp/opencode-smart-title-debug.log
-```
-
-### Verify proxy is working
-```bash
-curl http://localhost:4141/v1/models
-```
+Default: `http://localhost:4141`
 
 ## Using a Different AI Model
 
-The plugin uses GitHub Copilot by default, but you can switch to other providers by editing `index.ts`:
+Switch to other providers by editing `index.ts`:
 
 **Anthropic Claude:**
 ```typescript

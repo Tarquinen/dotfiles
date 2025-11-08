@@ -2,21 +2,17 @@
  * Smart Title Plugin for OpenCode
  * 
  * Automatically generates meaningful session titles based on conversation content.
- * Uses direct AI SDK calls to GitHub Copilot GPT-5 mini model via copilot-api proxy.
+ * Uses GitHub Copilot GPT-5 mini model via copilot-api proxy.
  * 
  * REQUIREMENTS:
- * 1. Install copilot-api globally: npm install -g copilot-api
- * 2. Authenticate once: npx copilot-api auth
- * 3. Start proxy server: npx copilot-api start
- * 4. Proxy runs on http://localhost:4141 by default
+ * 1. Active GitHub Copilot subscription
+ * 2. One-time authentication: npx copilot-api auth
  */
 
 import type { Plugin } from "@opencode-ai/plugin"
 import { generateText } from "ai"
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible"
-import { writeFileSync, appendFileSync } from "fs"
-import { tmpdir } from "os"
-import { join } from "path"
+import { spawn } from "child_process"
 
 // Type for OpenCode client object (simplified - uses 'any' for complex SDK types)
 interface OpenCodeClient {
@@ -59,50 +55,118 @@ interface SmartTitleMessage {
     parts: SmartTitleMessagePart[]
 }
 
+const PROXY_BASE_URL = process.env.COPILOT_API_URL || 'http://localhost:4141'
+const PROXY_HEALTH_URL = `${PROXY_BASE_URL}/v1/models`
+
 // Configure GitHub Copilot provider via copilot-api proxy
-// The proxy must be running: npx copilot-api start
 const copilotProvider = createOpenAICompatible({
     name: 'github-copilot',
-    baseURL: process.env.COPILOT_API_URL || 'http://localhost:4141/v1',
+    baseURL: `${PROXY_BASE_URL}/v1`,
     apiKey: 'dummy', // copilot-api handles auth internally
 })
 
-const DEBUG_LOG = join(tmpdir(), "opencode-smart-title-debug.log")
-
-/**
- * Log debug messages to file for troubleshooting
- */
-function debugLog(message: string, obj?: any) {
-    try {
-        const timestamp = new Date().toISOString()
-        let logMessage = `${timestamp} ${message}`
-        if (obj !== undefined) {
-            logMessage += ` ${JSON.stringify(obj, Object.getOwnPropertyNames(obj), 2)}`
-        }
-        appendFileSync(DEBUG_LOG, `${logMessage}\n`)
-    } catch (e) {
-        // Ignore logging errors
-    }
-}
-
-// Clear log on startup
-try {
-    writeFileSync(DEBUG_LOG, `=== SmartTitle Plugin Debug Log (${new Date().toISOString()}) ===\n`)
-} catch (e) {
-    // Ignore
-}
+// Track proxy startup state
+let proxyStartupAttempted = false
+let proxyHealthy = false
+let proxyStartupInProgress = false
 
 // Track processed user messages to avoid duplicate triggers
 const processedUserMessages = new Set<string>()
 
 /**
+ * Check if copilot-api proxy is responding
+ */
+async function checkProxyHealth(): Promise<boolean> {
+    try {
+        const controller = new AbortController()
+        const timeout = setTimeout(() => controller.abort(), 3000)
+
+        const response = await fetch(PROXY_HEALTH_URL, {
+            signal: controller.signal
+        })
+
+        clearTimeout(timeout)
+        return response.ok
+    } catch (error) {
+        return false
+    }
+}
+
+/**
+ * Start copilot-api proxy in background
+ */
+async function startProxy(): Promise<boolean> {
+    try {
+        // Start proxy in detached mode so it survives plugin restarts
+        const child = spawn('npx', ['copilot-api', 'start'], {
+            detached: true,
+            stdio: 'ignore',
+            shell: true
+        })
+
+        // Unref so parent process doesn't wait
+        child.unref()
+
+        // Wait for proxy to be ready (max 10 seconds)
+        for (let i = 0; i < 20; i++) {
+            await new Promise(resolve => setTimeout(resolve, 500))
+            if (await checkProxyHealth()) {
+                return true
+            }
+        }
+
+        return false
+
+    } catch (error) {
+        return false
+    }
+}
+
+/**
+ * Ensure proxy is running, start it if needed
+ */
+async function ensureProxyRunning(): Promise<boolean> {
+    // Only attempt startup once per plugin session
+    if (proxyStartupAttempted) {
+        return proxyHealthy
+    }
+
+    // If another instance is already starting the proxy, wait for it
+    if (proxyStartupInProgress) {
+        // Wait up to 15 seconds for the other startup to complete
+        for (let i = 0; i < 30; i++) {
+            await new Promise(resolve => setTimeout(resolve, 500))
+            if (proxyStartupAttempted) {
+                return proxyHealthy
+            }
+        }
+        // Timeout - proceed anyway
+    }
+
+    proxyStartupInProgress = true
+    proxyStartupAttempted = true
+
+    // Check if already running
+    if (await checkProxyHealth()) {
+        proxyHealthy = true
+        proxyStartupInProgress = false
+        return true
+    }
+
+    // Try to start it
+    proxyHealthy = await startProxy()
+    proxyStartupInProgress = false
+    return proxyHealthy
+}
+
+/**
  * Type guard to check if event properties contains message info with a role
  */
 function hasMessageRole(properties: any): properties is { info: { role: string, id: string, sessionID: string } } {
-    return 'info' in properties && 
-           properties.info &&
-           typeof properties.info === 'object' &&
-           'role' in properties.info
+    return 'info' in properties &&
+        properties.info &&
+        typeof properties.info === 'object' &&
+        'role' in properties.info
 }
 
 // Title generation prompt
@@ -273,8 +337,6 @@ function cleanTitle(raw: string): string {
  * Generate title from conversation context using GitHub Copilot via AI SDK
  */
 async function generateTitleFromContext(context: string): Promise<string | null> {
-    debugLog(`\n[Context]\n${context}\n`)
-
     try {
         const result = await generateText({
             model: copilotProvider('gpt-5-mini'),
@@ -287,12 +349,9 @@ async function generateTitleFromContext(context: string): Promise<string | null>
         })
 
         const title = cleanTitle(result.text)
-        debugLog(`[AI Response] ${title}\n`)
-
         return title
 
     } catch (error) {
-        debugLog('[Error]', error)
         return null
     }
 }
@@ -305,6 +364,11 @@ async function updateSessionTitle(
     sessionId: string
 ): Promise<void> {
     try {
+        // Ensure proxy is running before attempting title generation
+        if (!await ensureProxyRunning()) {
+            return
+        }
+
         // Extract smart context
         const turns = await extractSmartContext(client, sessionId)
 
@@ -330,7 +394,7 @@ async function updateSessionTitle(
         })
 
     } catch (error) {
-        debugLog('[Error]', error)
+        // Silent failure
     }
 }
 
@@ -339,6 +403,9 @@ async function updateSessionTitle(
  * Automatically updates session titles on each user message using smart context selection
  */
 const SmartTitlePlugin: Plugin = async ({ client }) => {
+    // Initialize proxy on plugin startup (runs in background)
+    ensureProxyRunning()
+
     return {
         event: async ({ event }) => {
             // Trigger on user message (track message IDs to avoid duplicates)
@@ -356,11 +423,9 @@ const SmartTitlePlugin: Plugin = async ({ client }) => {
                 // Mark this message as processed
                 processedUserMessages.add(messageId)
 
-                debugLog(`[Triggered] Session: ${sessionId}`)
-
                 // Don't await - let it run in background
-                updateSessionTitle(client, sessionId).catch((err) => {
-                    debugLog('[Error]', err)
+                updateSessionTitle(client, sessionId).catch(() => {
+                    // Silent failure
                 })
             }
         }
