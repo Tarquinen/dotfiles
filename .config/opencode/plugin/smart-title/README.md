@@ -1,96 +1,74 @@
 # Smart Title Plugin
 
-Automatically generates meaningful session titles for OpenCode conversations using AI.
+Auto-generates meaningful session titles for your OpenCode conversations using AI.
 
-## How It Works
+## What It Does
 
-Every time you send a message:
-1. Extracts key conversation context (first and last assistant responses per turn)
-2. Sends it to GitHub Copilot GPT-5 mini
-3. Generates a concise, descriptive title (≤50 chars)
-4. Updates your session title automatically
-
-Uses 95% fewer tokens than sending full conversation history while maintaining accuracy.
+Analyzes your conversation and creates a short, descriptive title (≤50 chars) that updates automatically as you chat.
 
 ## Setup
 
-### 1. Authenticate with GitHub Copilot (one-time)
-
-Requires active GitHub Copilot subscription.
-
-```bash
-npx copilot-api auth
-```
-
-### 2. Install dependencies
+**1. Install dependencies**
 
 ```bash
 cd ~/.config/opencode/plugin/smart-title
 bun install
 ```
 
-### 3. Enable plugin
+**2. Set your API key**
+
+Add to `~/.bashrc` or `~/.zshrc`:
+
+```bash
+# Pick one:
+export OPENAI_API_KEY=sk-...              # OpenAI (recommended)
+export GOOGLE_GENERATIVE_AI_API_KEY=...  # Google Gemini (free tier)
+export ANTHROPIC_API_KEY=sk-ant-...      # Anthropic Claude
+```
+
+For GitHub Copilot: `npx copilot-api auth` (no API key needed)
+
+Then reload: `source ~/.bashrc`
+
+**3. Configure provider**
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env`:
+
+```env
+AI_PROVIDER=gemini        # openai, gemini, anthropic, or copilot
+AI_MODEL=gemini-2.5-flash # optional, has sensible defaults
+```
+
+**4. Enable plugin**
 
 Add to `~/.config/opencode/opencode.json`:
 
 ```json
 {
-  "plugin": [
-    "./plugin/smart-title"
-  ]
+  "plugin": ["./plugin/smart-title"]
 }
 ```
 
-### 4. Restart OpenCode
+**5. Restart OpenCode**
 
-Done! Session titles will now update automatically.
+## Available Models
 
-## Configuration
+**OpenAI:** `gpt-5-nano` (default), `gpt-5-mini`, `gpt-5`, `gpt-5-pro`, `o4-mini`  
+**Gemini:** `gemini-2.5-flash` (default), `gemini-2.5-flash-lite`, `gemini-2.5-pro`  
+**Anthropic:** `claude-sonnet-4-5` (default), `claude-haiku-4-5`, `claude-opus-4-1`  
+**Copilot:** `gpt-5-mini` (default), `gpt-5`
 
-**Custom proxy URL** (optional):
+## Troubleshooting
 
-```bash
-export COPILOT_API_URL=http://custom-host:port
+Enable debug logging in `.env`:
+
+```env
+DEBUG=true
 ```
 
-Default: `http://localhost:4141`
+Check logs: `tail -f /tmp/opencode-smart-title-debug.log`
 
-**Title update threshold** (optional):
-
-```bash
-export TITLE_UPDATE_THRESHOLD=2
-```
-
-Controls how often the title updates based on user messages:
-- `1` (default): Update on every user message
-- `2`: Update every 2 user messages
-- `3`: Update every 3 user messages
-- etc.
-
-This can help reduce API calls while still keeping titles relatively up-to-date.
-
-## Using a Different AI Model
-
-Switch to other providers by editing `index.ts`:
-
-**Anthropic Claude:**
-```typescript
-import { anthropic } from '@ai-sdk/anthropic'
-
-const result = await generateText({
-  model: anthropic('claude-3-5-haiku-20241022'),
-  messages: [...]
-})
-```
-
-**OpenAI:**
-```typescript
-import { openai } from '@ai-sdk/openai'
-
-const result = await generateText({
-  model: openai('gpt-4o-mini'),
-  messages: [...]
-})
-```
-
-Install the provider package and set the API key environment variable.
