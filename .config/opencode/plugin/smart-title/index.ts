@@ -79,7 +79,7 @@ interface SmartTitleMessage {
 
 // Configuration from environment variables
 const AI_PROVIDER = process.env.AI_PROVIDER || 'copilot' // openai, gemini, anthropic, or copilot
-const AI_MODEL = process.env.AI_MODEL || 'gpt-4o-mini' // model name depends on provider
+const AI_MODEL = process.env.AI_MODEL || 'gpt-5-mini' // model name depends on provider
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY
 const GOOGLE_GENERATIVE_AI_API_KEY = process.env.GOOGLE_GENERATIVE_AI_API_KEY
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY
@@ -108,7 +108,7 @@ function initializeProvider() {
                 })
                 log(`[INIT] OpenAI provider initialized with model: ${AI_MODEL}`)
                 return openaiProvider
-            
+
             case 'gemini':
                 if (!GOOGLE_GENERATIVE_AI_API_KEY) {
                     log('[ERROR] GOOGLE_GENERATIVE_AI_API_KEY not set in .env')
@@ -119,7 +119,7 @@ function initializeProvider() {
                 })
                 log(`[INIT] Google Gemini provider initialized with model: ${AI_MODEL}`)
                 return geminiProvider
-            
+
             case 'anthropic':
                 if (!ANTHROPIC_API_KEY) {
                     log('[ERROR] ANTHROPIC_API_KEY not set in .env')
@@ -130,7 +130,7 @@ function initializeProvider() {
                 })
                 log(`[INIT] Anthropic provider initialized with model: ${AI_MODEL}`)
                 return anthropicProvider
-            
+
             case 'copilot':
                 copilotProvider = createOpenAICompatible({
                     name: 'github-copilot',
@@ -139,7 +139,7 @@ function initializeProvider() {
                 })
                 log(`[INIT] GitHub Copilot provider initialized with model: ${AI_MODEL}`)
                 return copilotProvider
-            
+
             default:
                 log(`[ERROR] Unknown AI_PROVIDER: ${AI_PROVIDER}`)
                 return null
@@ -154,7 +154,7 @@ function initializeProvider() {
 function getModel(): any {
     const provider = initializeProvider()
     if (!provider) return null
-    
+
     try {
         return provider(AI_MODEL)
     } catch (error) {
@@ -437,7 +437,7 @@ async function generateTitleFromContext(context: string): Promise<string | null>
             messages: [
                 {
                     role: 'user',
-                    content: `${TITLE_PROMPT}\n\n<conversation>\n${context}\n</conversation>`
+                    content: `${TITLE_PROMPT}\n\n<conversation>\n${context}\n</conversation>\n\nOutput the title now:`
                 }
             ]
         })

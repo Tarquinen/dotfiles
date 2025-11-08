@@ -22,6 +22,4 @@ Output: Single line, ≤50 chars, no explanations.
 Multiple turns about debugging → Debugging production errors
 Implementing feature across turns → Implementing rate limiting API
 Analyzing and fixing issue → Fixing authentication timeout
-</examples>
-
-Output the title now:`
+</examples>`
