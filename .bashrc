@@ -31,6 +31,7 @@ alias pydev="python3 -m venv venv && sv && pip install --upgrade pip"
 alias p="python3"
 alias g="g++ -o"
 alias lazydots='GIT_DIR=$HOME/.dotfiles GIT_WORK_TREE=$HOME lazygit'
+alias ld='GIT_DIR=$HOME/.dotfiles GIT_WORK_TREE=$HOME lazygit'
 alias oc="opencode"
 
 # ============================================================================
