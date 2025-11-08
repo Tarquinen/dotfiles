@@ -55,6 +55,20 @@ export COPILOT_API_URL=http://custom-host:port
 
 Default: `http://localhost:4141`
 
+**Title update threshold** (optional):
+
+```bash
+export TITLE_UPDATE_THRESHOLD=2
+```
+
+Controls how often the title updates based on user messages:
+- `1` (default): Update on every user message
+- `2`: Update every 2 user messages
+- `3`: Update every 3 user messages
+- etc.
+
+This can help reduce API calls while still keeping titles relatively up-to-date.
+
 ## Using a Different AI Model
 
 Switch to other providers by editing `index.ts`:

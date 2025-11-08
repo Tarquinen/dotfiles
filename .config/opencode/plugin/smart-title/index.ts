@@ -13,6 +13,22 @@ import type { Plugin } from "@opencode-ai/plugin"
 import { generateText } from "ai"
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible"
 import { spawn } from "child_process"
+import { appendFileSync } from "fs"
+import { config } from "dotenv"
+import { resolve, dirname } from "path"
+import { fileURLToPath } from "url"
+
+// Load .env file from plugin directory
+const __dirname = dirname(fileURLToPath(import.meta.url))
+config({ path: resolve(__dirname, '.env') })
+
+const DEBUG_LOG = '/tmp/opencode-smart-title-debug.log'
+
+function log(message: string) {
+    if (!DEBUG_ENABLED) return
+    const timestamp = new Date().toISOString()
+    appendFileSync(DEBUG_LOG, `${timestamp} ${message}\n`)
+}
 
 // Type for OpenCode client object (simplified - uses 'any' for complex SDK types)
 interface OpenCodeClient {
@@ -57,6 +73,8 @@ interface SmartTitleMessage {
 
 const PROXY_BASE_URL = process.env.COPILOT_API_URL || 'http://localhost:4141'
 const PROXY_HEALTH_URL = `${PROXY_BASE_URL}/v1/models`
+const TITLE_UPDATE_THRESHOLD = parseInt(process.env.TITLE_UPDATE_THRESHOLD || '1', 10)
+const DEBUG_ENABLED = process.env.DEBUG === 'true'
 
 // Configure GitHub Copilot provider via copilot-api proxy
 const copilotProvider = createOpenAICompatible({
@@ -72,6 +90,9 @@ let proxyStartupInProgress = false
 
 // Track processed user messages to avoid duplicate triggers
 const processedUserMessages = new Set<string>()
+
+// Track user message count per session for threshold-based updates
+const sessionUserMessageCount = new Map<string, number>()
 
 /**
  * Check if copilot-api proxy is responding
@@ -287,6 +308,14 @@ async function extractSmartContext(
 }
 
 /**
+ * Truncate text to specified length with ellipsis
+ */
+function truncate(text: string, maxLength: number): string {
+    if (text.length <= maxLength) return text
+    return text.substring(0, maxLength) + "..."
+}
+
+/**
  * Format conversation context for title generation
  */
 function formatContextForTitle(turns: SmartTitleConversationTurn[]): string {
@@ -377,6 +406,19 @@ async function updateSessionTitle(
             return
         }
 
+        // Log truncated context for debugging
+        log(`[Triggered] Session: ${sessionId}`)
+        log('[Context]')
+        for (const turn of turns) {
+            log(`  User: ${truncate(turn.user.text, 100)}`)
+            if (turn.assistant) {
+                log(`  Assistant (first): ${truncate(turn.assistant.first, 100)}`)
+                if (turn.assistant.first !== turn.assistant.last) {
+                    log(`  Assistant (last): ${truncate(turn.assistant.last, 100)}`)
+                }
+            }
+        }
+
         // Format context
         const context = formatContextForTitle(turns)
 
@@ -384,8 +426,12 @@ async function updateSessionTitle(
         const newTitle = await generateTitleFromContext(context)
 
         if (!newTitle) {
+            log('[Title] Generation failed')
             return
         }
+
+        // Log the generated title
+        log(`[Title] ${newTitle}`)
 
         // Update session
         await client.session.update({
@@ -422,6 +468,15 @@ const SmartTitlePlugin: Plugin = async ({ client }) => {
 
                 // Mark this message as processed
                 processedUserMessages.add(messageId)
+
+                // Increment user message count for this session
+                const currentCount = (sessionUserMessageCount.get(sessionId) || 0) + 1
+                sessionUserMessageCount.set(sessionId, currentCount)
+
+                // Only update title if we've reached the threshold
+                if (currentCount % TITLE_UPDATE_THRESHOLD !== 0) {
+                    return
+                }
 
                 // Don't await - let it run in background
                 updateSessionTitle(client, sessionId).catch(() => {
