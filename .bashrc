@@ -9,6 +9,7 @@ source ~/.local/share/omarchy/default/bash/rc
 # Environment Variables
 # ============================================================================
 export BUN_INSTALL="$HOME/.bun"
+export OPENCODE_DISABLE_DEFAULT_PLUGINS=1
 
 # ============================================================================
 # PATH

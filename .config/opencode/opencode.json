@@ -12,10 +12,10 @@
             "model": "github-copilot/claude-sonnet-4.5"
         },
         "plan": {
-            "model": "github-copilot/gpt-5-mini"
+            "model": "github-copilot/gpt-4.1"
         },
         "general": {
-            "model": "opencode/big-pickle"
+            "model": "github-copilot/claude-sonnet-4.5"
         }
     },
     "mcp": {
@@ -43,6 +43,9 @@
         }
     },
     "plugin": [
-        "./plugin/smart-title"
+        "./plugin/smart-title",
+        "opencode-anthropic-auth@0.0.2",
+        "opencode-copilot-auth@0.0.4",
+        "./plugin/copilot-force-agent-header"
     ]
 }
