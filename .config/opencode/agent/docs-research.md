@@ -1,7 +1,7 @@
 ---
 description: Use this agent when the user asks for library documentation, API references, framework guides, or needs to research how to use a specific tool or package. Also use when searching for real-world code examples and usage patterns.
 mode: subagent
-model: "opencode/big-pickle"
+model: "github-copilot/claude-sonnet-4.5"
 temperature: 0.1
 tools:
   write: false
