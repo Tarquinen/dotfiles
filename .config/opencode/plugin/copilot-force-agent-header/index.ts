@@ -9,17 +9,11 @@
 
 import type { Plugin } from "@opencode-ai/plugin"
 import type { OAuth } from "@opencode-ai/sdk"
-import { config } from "dotenv"
 import { appendFileSync } from "fs"
-import { resolve, dirname } from "path"
-import { fileURLToPath } from "url"
 
-// Setup
-const __dirname = dirname(fileURLToPath(import.meta.url))
-config({ path: resolve(__dirname, '.env') })
-
+// Debug Configuration
+const DEBUG_ENABLED = false // Set to true to enable debug logging
 const DEBUG_LOG = '/tmp/opencode-copilot-agent-header-debug.log'
-const DEBUG_ENABLED = process.env.DEBUG === 'true'
 
 function log(message: string) {
     if (!DEBUG_ENABLED) return
