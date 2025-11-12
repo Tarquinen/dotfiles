@@ -53,21 +53,14 @@ Uses the `auth.loader` hook to intercept HTTP requests and modify headers before
 3. Forces `X-Initiator: "agent"` on every request
 4. Works with all GitHub Copilot models (gpt-5-mini, claude-sonnet, etc.)
 
-By default, debug logging is **disabled**.
+## Debug Logging
 
-## Troubleshooting
+Debug logging is controlled by the `DEBUG_ENABLED` constant in `index.ts` (line 15).
 
-Enable debug logging by copying `.env.example` to `.env`:
+To enable debug logging:
 
-```bash
-cd ~/.config/opencode/plugin/copilot-force-agent-header/
-cp .env.example .env
-```
-
-Edit `.env`:
-
-```env
-DEBUG=true
-```
+1. Edit `~/.config/opencode/plugin/copilot-force-agent-header/index.ts`
+2. Change `const DEBUG_ENABLED = true` to enable, or `false` to disable
+3. Restart OpenCode
 
 Check logs: `tail -f /tmp/opencode-copilot-agent-header-debug.log`

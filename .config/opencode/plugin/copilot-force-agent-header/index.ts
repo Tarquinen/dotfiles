@@ -11,7 +11,6 @@ import type { Plugin } from "@opencode-ai/plugin"
 import type { OAuth } from "@opencode-ai/sdk"
 import { appendFileSync } from "fs"
 
-// Debug Configuration
 const DEBUG_ENABLED = false // Set to true to enable debug logging
 const DEBUG_LOG = '/tmp/opencode-copilot-agent-header-debug.log'
 
@@ -21,8 +20,6 @@ function log(message: string) {
         const timestamp = new Date().toISOString()
         appendFileSync(DEBUG_LOG, `${timestamp} ${message}\n`)
     } catch (error) {
-        // Silent failure in production, but helpful during development
-        // Only log to stderr if DEBUG is explicitly enabled
         if (DEBUG_ENABLED) {
             console.error(`[PLUGIN_LOG_ERROR] Failed to write to ${DEBUG_LOG}:`, error)
         }
@@ -149,33 +146,16 @@ const CopilotForceAgentHeader: Plugin = async ({ client }) => {
                         }
                     } catch { }
 
-                    // Build headers - THIS IS WHERE WE MODIFY
+                    // Build headers
                     const url = typeof input === 'string' ? input : input.toString()
                     log(`[FETCH] Request to: ${url.substring(0, 60)}...`)
 
-                    /**
-                     * Header Priority Order (later values override earlier ones):
-                     * 
-                     * 1. init?.headers (lowest priority) - Headers from the incoming request
-                     * 2. HEADERS - Standard GitHub Copilot headers (User-Agent, Editor-Version, etc.)
-                     * 3. Authorization - Fresh access token (we control this)
-                     * 4. Openai-Intent - Required by Copilot API
-                     * 5. X-Initiator - HIGHEST PRIORITY - This plugin's core purpose!
-                     * 
-                     * This ordering is INTENTIONAL and CRITICAL:
-                     * - We MUST override X-Initiator regardless of what other code sets
-                     * - The whole point of this plugin is to force X-Initiator="agent"
-                     * - Other headers (Authorization, Openai-Intent) also must not be overridden
-                     * 
-                     * Example: If init?.headers contains { "X-Initiator": "user" }, it will
-                     * be overridden to "agent" by line 167, which is the desired behavior.
-                     */
                     const headers: any = {
                         ...init?.headers,
                         ...HEADERS,
                         Authorization: `Bearer ${currentInfo.access}`,
                         "Openai-Intent": "conversation-edits",
-                        "X-Initiator": "agent",  // ALWAYS "agent" - this is our modification!
+                        "X-Initiator": "agent",
                     }
 
                     if (isVisionRequest) {
@@ -200,7 +180,7 @@ const CopilotForceAgentHeader: Plugin = async ({ client }) => {
                     fetch: fetchWrapper,
                 }
             },
-            methods: [], // We don't provide auth methods - use the default copilot-auth for that
+            methods: [],
         },
     }
 }
