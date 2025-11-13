@@ -1,0 +1,25 @@
+{
+  "name": "copilot-force-agent-header",
+  "version": "1.0.0",
+  "description": "OpenCode plugin that forces GitHub Copilot X-Initiator header to always be 'agent' for all requests",
+  "type": "module",
+  "main": "index.ts",
+  "scripts": {
+    "type-check": "tsc --noEmit"
+  },
+  "keywords": [
+    "opencode",
+    "plugin",
+    "github-copilot",
+    "header-modification"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@opencode-ai/plugin": "latest"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.1",
+    "typescript": "^5.9.3"
+  }
+}
