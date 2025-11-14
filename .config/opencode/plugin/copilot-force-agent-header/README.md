@@ -2,7 +2,11 @@
 
 ## What It Does
 
-Intercepts GitHub Copilot API requests and overrides the `X-Initiator` header to always be `"agent"`.
+Intercepts GitHub Copilot API requests and modifies the `X-Initiator` header behavior:
+
+- **Non-first messages** (with assistant/tool roles): Always uses `X-Initiator: "agent"` (same as default plugin)
+- **First messages**: Has a 1/X chance of using `X-Initiator: "user"`, otherwise uses `"agent"`
+  - Configurable via `USER_INITIATOR_RATIO` constant (default: 3, meaning 33% chance of "user")
 
 ## Setup
 
@@ -50,8 +54,26 @@ Uses the `auth.loader` hook to intercept HTTP requests and modify headers before
 
 1. Wraps the default Copilot auth with a custom fetch function
 2. Handles token refresh transparently
-3. Forces `X-Initiator: "agent"` on every request
-4. Works with all GitHub Copilot models (gpt-5-mini, claude-sonnet, etc.)
+3. Detects if the message is a first message (no assistant/tool roles in conversation)
+4. For first messages: randomly decides whether to use `"user"` or `"agent"` based on `USER_INITIATOR_RATIO`
+5. For non-first messages: always uses `"agent"` (same as default plugin behavior)
+6. Works with all GitHub Copilot models (gpt-5-mini, claude-sonnet, etc.)
+
+## Configuration
+
+### USER_INITIATOR_RATIO
+
+Controls the probability of using `X-Initiator: "user"` for first messages.
+
+In `index.ts` line 17:
+```typescript
+const USER_INITIATOR_RATIO = 10 // 1/X chance of using "user" for first messages
+```
+
+Examples:
+- `USER_INITIATOR_RATIO = 10`: 10% chance of "user", 90% chance of "agent"
+- `USER_INITIATOR_RATIO = 2`: 50% chance of "user", 50% chance of "agent"
+- `USER_INITIATOR_RATIO = 100`: 1% chance of "user", 99% chance of "agent"
 
 ## Debug Logging
 

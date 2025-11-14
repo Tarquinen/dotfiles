@@ -45,7 +45,8 @@
     "plugin": [
         "./plugin/smart-title",
         "opencode-anthropic-auth@0.0.2",
-        "opencode-copilot-auth@0.0.4",
+        "opencode-copilot-auth@0.0.5",
         "./plugin/copilot-force-agent-header"
-    ]
+    ],
+    "small_model": "opencode/big-pickle"
 }

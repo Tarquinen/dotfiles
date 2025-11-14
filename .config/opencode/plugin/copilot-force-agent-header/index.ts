@@ -1,8 +1,9 @@
 /**
  * Copilot Force Agent Header Plugin for OpenCode
  * 
- * This is a modified version of opencode-copilot-auth that ALWAYS sets X-Initiator to "agent".
- * It includes all the token refresh logic from the original plugin.
+ * This is a modified version of opencode-copilot-auth with configurable X-Initiator behavior.
+ * - For non-first messages (messages with assistant/tool roles): behaves like default plugin
+ * - For first messages: has 1/USER_INITIATOR_RATIO chance of using "user", otherwise "agent"
  * 
  * Based on: https://github.com/sst/opencode-copilot-auth/blob/main/index.mjs
  */
@@ -13,6 +14,7 @@ import { appendFileSync } from "fs"
 
 const DEBUG_ENABLED = false // Set to true to enable debug logging
 const DEBUG_LOG = '/tmp/opencode-copilot-agent-header-debug.log'
+const USER_INITIATOR_RATIO = 3 // 1/X chance of using "user" for first messages (X=3 means 33% chance)
 
 function log(message: string) {
     if (!DEBUG_ENABLED) return
@@ -81,12 +83,14 @@ const CopilotForceAgentHeader: Plugin = async ({ client }) => {
                 const fetchWrapper = async (input: RequestInfo | URL, init?: RequestInit) => {
                     log('[FETCH] Fetch function called!')
                     const authInfo = await getAuth()
-                    if (!authInfo || authInfo.type !== "oauth") return fetch(input, init)
+                    if (!authInfo || authInfo.type !== "oauth") {
+                        return fetch(input, init)
+                    }
 
                     // Type assertion after runtime check
                     const currentInfo = authInfo as OAuth
 
-                    // Token refresh logic (from copilot-auth)
+                    // Token refresh logic
                     if (!currentInfo.access || currentInfo.expires < Date.now()) {
                         log('[FETCH] Token expired, refreshing...')
 
@@ -131,13 +135,19 @@ const CopilotForceAgentHeader: Plugin = async ({ client }) => {
                         log('[FETCH] Token refreshed')
                     }
 
-                    // Check for vision request (from copilot-auth)
+                    // Determine X-Initiator based on message content
+                    let isAgentCall = false
                     let isVisionRequest = false
                     try {
                         const body = typeof init?.body === "string"
                             ? JSON.parse(init.body)
                             : init?.body
                         if (body?.messages) {
+                            // Check if this is an ongoing conversation (has assistant/tool messages)
+                            isAgentCall = body.messages.some(
+                                (msg: any) => msg.role && ["tool", "assistant"].includes(msg.role),
+                            )
+                            // Check for vision request
                             isVisionRequest = body.messages.some(
                                 (msg: any) =>
                                     Array.isArray(msg.content) &&
@@ -145,6 +155,20 @@ const CopilotForceAgentHeader: Plugin = async ({ client }) => {
                             )
                         }
                     } catch { }
+
+                    // Determine X-Initiator value
+                    let initiator: string
+                    if (isAgentCall) {
+                        // Non-first message: always use "agent"
+                        initiator = "agent"
+                        log('[FETCH] Non-first message detected, using: agent')
+                    } else {
+                        // First message: 1/USER_INITIATOR_RATIO chance of "user", otherwise "agent"
+                        const randomValue = Math.random()
+                        const useUser = randomValue < (1 / USER_INITIATOR_RATIO)
+                        initiator = useUser ? "user" : "agent"
+                        log(`[FETCH] First message detected, random=${randomValue.toFixed(4)}, threshold=${(1 / USER_INITIATOR_RATIO).toFixed(4)}, using: ${initiator}`)
+                    }
 
                     // Build headers
                     const url = typeof input === 'string' ? input : input.toString()
@@ -155,7 +179,7 @@ const CopilotForceAgentHeader: Plugin = async ({ client }) => {
                         ...HEADERS,
                         Authorization: `Bearer ${currentInfo.access}`,
                         "Openai-Intent": "conversation-edits",
-                        "X-Initiator": "agent",
+                        "X-Initiator": initiator,
                     }
 
                     if (isVisionRequest) {
@@ -164,7 +188,7 @@ const CopilotForceAgentHeader: Plugin = async ({ client }) => {
 
                     delete headers["x-api-key"]
 
-                    log('[FETCH] ✓ Forced X-Initiator: agent')
+                    log(`[FETCH] ✓ X-Initiator: ${initiator}`)
 
                     return fetch(input, {
                         ...init,
