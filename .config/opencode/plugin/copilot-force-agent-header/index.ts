@@ -14,7 +14,7 @@ import { appendFileSync } from "fs"
 
 const DEBUG_ENABLED = false // Set to true to enable debug logging
 const DEBUG_LOG = '/tmp/opencode-copilot-agent-header-debug.log'
-const USER_INITIATOR_RATIO = 3 // 1/X chance of using "user" for first messages (X=3 means 33% chance)
+const USER_INITIATOR_RATIO = 0 // 1/X chance of "user" for first messages (<=0 disables and always uses "agent")
 
 function log(message: string) {
     if (!DEBUG_ENABLED) return
@@ -164,10 +164,12 @@ const CopilotForceAgentHeader: Plugin = async ({ client }) => {
                         log('[FETCH] Non-first message detected, using: agent')
                     } else {
                         // First message: 1/USER_INITIATOR_RATIO chance of "user", otherwise "agent"
+                        const userProbability = USER_INITIATOR_RATIO > 0 ? 1 / USER_INITIATOR_RATIO : 0
                         const randomValue = Math.random()
-                        const useUser = randomValue < (1 / USER_INITIATOR_RATIO)
+                        const useUser = randomValue < userProbability
                         initiator = useUser ? "user" : "agent"
-                        log(`[FETCH] First message detected, random=${randomValue.toFixed(4)}, threshold=${(1 / USER_INITIATOR_RATIO).toFixed(4)}, using: ${initiator}`)
+                        const thresholdLog = USER_INITIATOR_RATIO > 0 ? userProbability.toFixed(4) : 'disabled'
+                        log(`[FETCH] First message detected, random=${randomValue.toFixed(4)}, threshold=${thresholdLog}, using: ${initiator}`)
                     }
 
                     // Build headers
