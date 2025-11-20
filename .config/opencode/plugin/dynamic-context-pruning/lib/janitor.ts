@@ -1,14 +1,17 @@
 import { generateObject } from "ai"
-import { createShadowModel } from "./factory"
+import { createOpenAICompatible } from "@ai-sdk/openai-compatible"
 import { z } from "zod"
 import type { Logger } from "./logger"
 import type { StateManager } from "./state"
+import { buildAnalysisPrompt } from "./prompt"
 
 export class Janitor {
     constructor(
         private client: any,
         private stateManager: StateManager,
-        private logger: Logger
+        private logger: Logger,
+        private toolParametersCache: Map<string, any>,
+        private protectedTools: string[]
     ) { }
 
     async run(sessionID: string) {
@@ -40,32 +43,56 @@ export class Janitor {
             }
 
             // Extract tool call IDs from the session and track their output sizes
-            // Also track batch tool relationships
+            // Also track batch tool relationships and tool metadata
             const toolCallIds: string[] = []
             const toolOutputs = new Map<string, string>()
+            const toolMetadata = new Map<string, { tool: string, parameters?: any }>() // callID -> {tool, parameters}
             const batchToolChildren = new Map<string, string[]>() // batchID -> [childIDs]
             let currentBatchId: string | null = null
-            
+
             for (const msg of messages) {
                 if (msg.parts) {
                     for (const part of msg.parts) {
                         if (part.type === "tool" && part.callID) {
                             toolCallIds.push(part.callID)
-                            
+
+                            // Try to get parameters from cache first, fall back to part.parameters
+                            const cachedData = this.toolParametersCache.get(part.callID)
+                            const parameters = cachedData?.parameters || part.parameters
+
+                            // Track tool metadata (name and parameters)
+                            toolMetadata.set(part.callID, {
+                                tool: part.tool,
+                                parameters: parameters
+                            })
+
+                            // Debug: log what we're storing
+                            if (part.callID.startsWith('prt_') || part.tool === "read" || part.tool === "list") {
+                                this.logger.debug("janitor", "Storing tool metadata", {
+                                    sessionID,
+                                    callID: part.callID,
+                                    tool: part.tool,
+                                    hasParameters: !!parameters,
+                                    hasCached: !!cachedData,
+                                    parameters: parameters
+                                })
+                            }
+
                             // Track the output content for size calculation
                             if (part.state?.status === "completed" && part.state.output) {
                                 toolOutputs.set(part.callID, part.state.output)
                             }
-                            
+
                             // Check if this is a batch tool by looking at the tool name
                             if (part.tool === "batch") {
-                                currentBatchId = part.callID
-                                batchToolChildren.set(currentBatchId, [])
+                                const batchId = part.callID
+                                currentBatchId = batchId
+                                batchToolChildren.set(batchId, [])
                                 this.logger.debug("janitor", "Found batch tool", {
                                     sessionID,
                                     batchID: currentBatchId
                                 })
-                            } 
+                            }
                             // If we're inside a batch and this is a prt_ (parallel) tool call, it's a child
                             else if (currentBatchId && part.callID.startsWith('prt_')) {
                                 const children = batchToolChildren.get(currentBatchId)!
@@ -90,7 +117,7 @@ export class Janitor {
                     }
                 }
             }
-            
+
             // Log summary of batch tools found
             if (batchToolChildren.size > 0) {
                 this.logger.debug("janitor", "Batch tool summary", {
@@ -116,14 +143,44 @@ export class Janitor {
                 unprunedCount: unprunedToolCallIds.length
             })
 
+            // Filter out protected tools from being considered for pruning
+            const protectedToolCallIds: string[] = []
+            const prunableToolCallIds = unprunedToolCallIds.filter(id => {
+                const metadata = toolMetadata.get(id)
+                if (metadata && this.protectedTools.includes(metadata.tool)) {
+                    protectedToolCallIds.push(id)
+                    return false
+                }
+                return true
+            })
+
+            if (protectedToolCallIds.length > 0) {
+                this.logger.debug("janitor", "Protected tools excluded from pruning", {
+                    sessionID,
+                    protectedCount: protectedToolCallIds.length,
+                    protectedTools: protectedToolCallIds.map(id => {
+                        const metadata = toolMetadata.get(id)
+                        return { id, tool: metadata?.tool }
+                    })
+                })
+            }
+
             // If there are no unpruned tool calls, skip analysis
-            if (unprunedToolCallIds.length === 0) {
-                this.logger.debug("janitor", "No unpruned tool calls found, skipping analysis", { sessionID })
+            if (prunableToolCallIds.length === 0) {
+                this.logger.debug("janitor", "No prunable tool calls found, skipping analysis", { 
+                    sessionID,
+                    protectedCount: protectedToolCallIds.length
+                })
                 return
             }
 
             // Use big-pickle model - no auth needed!
-            const model = createShadowModel()
+            // Use big-pickle model (public and free, no auth needed)
+            const openai = createOpenAICompatible({
+                baseURL: "https://opencode.ai/zen/v1",
+                name: "opencode",
+            })
+            const model = openai("big-pickle")
 
             this.logger.debug("janitor", "Starting shadow inference", { sessionID })
 
@@ -135,42 +192,14 @@ export class Janitor {
                     pruned_tool_call_ids: z.array(z.string()),
                     reasoning: z.string(),
                 }),
-                prompt: `You are a conversation analyzer that identifies obsolete tool outputs in a coding session.
-
-Your task: Analyze the session history and identify tool call IDs whose outputs are NO LONGER RELEVANT to the current conversation context.
-
-Guidelines for identifying obsolete tool calls:
-1. Tool outputs that were superseded by newer reads of the same file/resource
-2. Exploratory reads that didn't lead to actual edits or meaningful discussion
-3. Tool calls from >10 turns ago that are no longer referenced
-4. Error outputs that were subsequently fixed
-5. Tool calls whose information has been replaced by more recent operations
-
-                DO NOT prune:
-- Recent tool calls (within last 5 turns)
-- Tool calls that modified state (edits, writes, etc.)
-- Tool calls whose outputs are actively being discussed
-- Tool calls that produced errors still being debugged
-
-Available tool call IDs in this session (not yet pruned): ${unprunedToolCallIds.join(", ")}
-
-Session history:
-${JSON.stringify(messages, null, 2)}
-
-You MUST respond with valid JSON matching this exact schema:
-{
-  "pruned_tool_call_ids": ["id1", "id2", ...],
-  "reasoning": "explanation of why these IDs were selected"
-}
-
-Return ONLY the tool call IDs that should be pruned (removed from future LLM requests).`
+                prompt: buildAnalysisPrompt(prunableToolCallIds, messages, this.protectedTools)
             })
 
             // Expand batch tool IDs to include their children
             const expandedPrunedIds = new Set<string>()
             for (const prunedId of result.object.pruned_tool_call_ids) {
                 expandedPrunedIds.add(prunedId)
-                
+
                 // If this is a batch tool, add all its children
                 const children = batchToolChildren.get(prunedId)
                 if (children) {
@@ -183,7 +212,7 @@ Return ONLY the tool call IDs that should be pruned (removed from future LLM req
                     children.forEach(childId => expandedPrunedIds.add(childId))
                 }
             }
-            
+
             const finalPrunedIds = Array.from(expandedPrunedIds)
 
             this.logger.info("janitor", "Analysis complete", {
@@ -218,12 +247,118 @@ Return ONLY the tool call IDs that should be pruned (removed from future LLM req
             // Show toast notification if we pruned anything
             if (finalPrunedIds.length > 0) {
                 try {
+                    // Helper function to shorten paths for display
+                    const shortenPath = (path: string): string => {
+                        // Replace home directory with ~
+                        const homeDir = require('os').homedir()
+                        if (path.startsWith(homeDir)) {
+                            path = '~' + path.slice(homeDir.length)
+                        }
+
+                        // Shorten node_modules paths: show package + file only
+                        const nodeModulesMatch = path.match(/node_modules\/(@[^\/]+\/[^\/]+|[^\/]+)\/(.*)/)
+                        if (nodeModulesMatch) {
+                            return `${nodeModulesMatch[1]}/${nodeModulesMatch[2]}`
+                        }
+
+                        return path
+                    }
+
+                    // Helper function to truncate long strings
+                    const truncate = (str: string, maxLen: number = 60): string => {
+                        if (str.length <= maxLen) return str
+                        return str.slice(0, maxLen - 3) + '...'
+                    }
+
+                    // Build a summary of pruned tools by grouping them
+                    const toolsSummary = new Map<string, string[]>() // tool name -> [parameters]
+
+                    for (const prunedId of finalPrunedIds) {
+                        const metadata = toolMetadata.get(prunedId)
+                        if (metadata) {
+                            const toolName = metadata.tool
+                            if (!toolsSummary.has(toolName)) {
+                                toolsSummary.set(toolName, [])
+                            }
+
+                            this.logger.debug("janitor", "Processing pruned tool metadata", {
+                                sessionID,
+                                prunedId,
+                                toolName,
+                                parameters: metadata.parameters
+                            })
+
+                            // Extract meaningful parameter info based on tool type
+                            let paramInfo = ""
+                            if (metadata.parameters) {
+                                // For read tool, show filePath
+                                if (toolName === "read" && metadata.parameters.filePath) {
+                                    paramInfo = truncate(shortenPath(metadata.parameters.filePath), 50)
+                                }
+                                // For list tool, show path
+                                else if (toolName === "list" && metadata.parameters.path) {
+                                    paramInfo = truncate(shortenPath(metadata.parameters.path), 50)
+                                }
+                                // For bash/command tools, prefer description over command
+                                else if (toolName === "bash") {
+                                    if (metadata.parameters.description) {
+                                        paramInfo = truncate(metadata.parameters.description, 50)
+                                    } else if (metadata.parameters.command) {
+                                        paramInfo = truncate(metadata.parameters.command, 50)
+                                    }
+                                }
+                                // For other tools, show the first relevant parameter
+                                else if (metadata.parameters.path) {
+                                    paramInfo = truncate(shortenPath(metadata.parameters.path), 50)
+                                }
+                                else if (metadata.parameters.pattern) {
+                                    paramInfo = truncate(metadata.parameters.pattern, 50)
+                                }
+                                else if (metadata.parameters.command) {
+                                    paramInfo = truncate(metadata.parameters.command, 50)
+                                }
+                            }
+
+                            if (paramInfo) {
+                                toolsSummary.get(toolName)!.push(paramInfo)
+                            }
+                        } else {
+                            this.logger.warn("janitor", "No metadata found for pruned tool", {
+                                sessionID,
+                                prunedId
+                            })
+                        }
+                    }
+
+                    // Format the message with tool details
+                    const toolText = finalPrunedIds.length === 1 ? 'tool' : 'tools';
+                    const title = `Pruned ${finalPrunedIds.length} ${toolText} from context`;
+                    let message = `~${estimatedTokensSaved.toLocaleString()} tokens saved\n`
+
+                    for (const [toolName, params] of toolsSummary.entries()) {
+                        if (params.length > 0) {
+                            message += `\n${toolName} (${params.length}):\n`
+                            for (const param of params) {
+                                message += `  ${param}\n`
+                            }
+                        } else {
+                            // For tools with no specific params (like batch), just show the tool name and count
+                            const count = finalPrunedIds.filter(id => {
+                                const m = toolMetadata.get(id)
+                                return m && m.tool === toolName
+                            }).length
+                            if (count > 0) {
+                                message += `\n${toolName} (${count})\n`
+                            }
+                        }
+                    }
+
                     await this.client.tui.showToast({
                         body: {
-                            title: "Context Pruned",
-                            message: `Removed ${finalPrunedIds.length} tool output${finalPrunedIds.length > 1 ? 's' : ''} (~${estimatedTokensSaved.toLocaleString()} tokens saved)`,
+                            title: title,
+                            message: message.trim(),
                             variant: "success",
-                            duration: 5000
+                            duration: 8000 // Longer duration since we're showing more info
                         }
                     })
 
@@ -231,7 +366,8 @@ Return ONLY the tool call IDs that should be pruned (removed from future LLM req
                         sessionID,
                         prunedCount: finalPrunedIds.length,
                         estimatedTokensSaved,
-                        totalCharsSaved
+                        totalCharsSaved,
+                        toolsSummary: Array.from(toolsSummary.entries())
                     })
                 } catch (toastError: any) {
                     this.logger.error("janitor", "Failed to show toast notification", {
