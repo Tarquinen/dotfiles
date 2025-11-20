@@ -1,5 +1,5 @@
 ---
-description: Analyzes codebase implementation details. Call the codebase-analyzer agent when you need to find detailed information about specific components.
+description: Analyzes codebase implementation details. Call the codebase-analyzer agent when you need to find detailed information about specific components. Use this agent proactively.
 mode: subagent
 model: "github-copilot/claude-sonnet-4.5"
 temperature: 0.1

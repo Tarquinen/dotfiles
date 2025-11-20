@@ -1,5 +1,5 @@
 ---
-description: Use this agent when the user asks for library documentation, API references, framework guides, or needs to research how to use a specific tool or package. Also use when searching for real-world code examples and usage patterns.
+description: Use this agent when the user asks for library documentation, API references, framework guides, or needs to research how to use a specific tool or package. Also use when searching for real-world code examples and usage patterns. Use this agent proactively.
 mode: subagent
 model: "github-copilot/claude-sonnet-4.5"
 temperature: 0.1
