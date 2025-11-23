@@ -1,5 +1,6 @@
 {
     "$schema": "https://opencode.ai/config.json",
+    "autoupdate": false,
     "permission": {
         "bash": {
             "*": "allow",
@@ -42,11 +43,19 @@
             "disabled": true
         }
     },
+    "experimental": {
+        "batch_tool": true
+    },
+    "small_model": "opencode/big-pickle",
     "plugin": [
-        "./plugin/smart-title",
         "opencode-anthropic-auth@0.0.2",
         "opencode-copilot-auth@0.0.5",
-        "./plugin/copilot-force-agent-header"
-    ],
-    "small_model": "opencode/big-pickle"
+        "./plugin/copilot-force-agent-header",
+        "opencode-gemini-auth",
+        "@openhax/codex",
+        "@tarquinen/opencode-dcp@0.3.3",
+        "@tarquinen/opencode-smart-title@0.1.4",
+        // "./plugin/opencode-dynamic-context-pruning",
+        // "./plugin/smart-title",
+    ]
 }
