@@ -36,7 +36,7 @@ alias lazydots='GIT_DIR=$HOME/.dotfiles GIT_WORK_TREE=$HOME lazygit'
 alias ld='GIT_DIR=$HOME/.dotfiles GIT_WORK_TREE=$HOME lazygit'
 alias oc="opencode"
 alias dcpv="jq -r '.version' ~/.cache/opencode/node_modules/@tarquinen/opencode-dcp/package.json"
-
+alias dcp="cd ~/.config/opencode/plugin/opencode-dynamic-context-pruning/"
 # ============================================================================
 # Functions
 # ============================================================================

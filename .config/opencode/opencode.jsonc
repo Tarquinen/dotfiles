@@ -10,13 +10,13 @@
     },
     "agent": {
         "build": {
-            "model": "github-copilot/claude-sonnet-4.5"
+            "model": "github-copilot/claude-opus-4.5"
         },
         "plan": {
             "model": "github-copilot/gpt-4.1"
         },
         "general": {
-            "model": "github-copilot/claude-sonnet-4.5"
+            "model": "github-copilot/claude-opus-4.5"
         }
     },
     "mcp": {
@@ -53,8 +53,8 @@
         "./plugin/copilot-force-agent-header",
         "opencode-gemini-auth",
         "@openhax/codex",
-        "@tarquinen/opencode-dcp@0.3.3",
-        "@tarquinen/opencode-smart-title@0.1.4",
+        "@tarquinen/opencode-dcp@0.3.16",
+        "@tarquinen/opencode-smart-title@0.1.5",
         // "./plugin/opencode-dynamic-context-pruning",
         // "./plugin/smart-title",
     ]
