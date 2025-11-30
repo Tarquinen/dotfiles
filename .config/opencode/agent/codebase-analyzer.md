@@ -8,7 +8,7 @@ tools:
   grep: true
   glob: true
   list: true
-  bash: false
+  bash: true
   edit: false
   write: false
   patch: false

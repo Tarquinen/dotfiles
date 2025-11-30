@@ -35,7 +35,7 @@ Summarize the changes to determine an appropriate commit message.
 Create a descriptive branch name based on the changes (e.g., `fix/description` or `feat/description`).
 
 ### Step 3: Commit Changes
-Stage all relevant changed files and commit with a clear, descriptive message that explains the "why" not just the "what".
+Stage all relevant changed files and commit with a clear, descriptive message that explains the "why" not just the "what". Make sure to fully analyze all changes for the commit message.
 
 ### Step 4: Version Bump
 - Read the current version from package.json
@@ -56,7 +56,7 @@ Create a git tag for the new version (e.g., `v0.3.7`).
 
 ### Step 6: Push and Create PR
 - Push the branch with `git push -u origin {branch} --tags`
-- Create a PR using `gh pr create` with a summary of changes
+- Create a PR using `gh pr create` with a summary of changes. Make sure to fully analyze all changes for the PR description.
 
 ### Step 7: Wait for CI
 Use `gh pr checks {pr_number} --watch` to wait for CI checks to complete.
