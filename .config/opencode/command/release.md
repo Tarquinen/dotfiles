@@ -51,12 +51,34 @@ Stage all relevant changed files and commit with a clear, descriptive message th
     - Version numbers in example configs or install instructions
 - Commit the version bump with message like "v{version} - Bump version"
 
-### Step 5: Create Tag
-Create a git tag for the new version (e.g., `v0.3.7`).
+### Step 5: Create Annotated Tag with Release Notes
+Create an annotated git tag that includes a summary of changes:
+- Review all commits since the last tag using `git log $(git describe --tags --abbrev=0)..HEAD --oneline`
+- Create an annotated tag with a descriptive message summarizing the key changes
+- Use `git tag -a v{version} -m "Release v{version}" -m "" -m "Changes:" -m "- {summary of each significant change}"`
+- The tag message should include:
+  - A brief summary line (e.g., "Release v0.3.28 - Add context pruning improvements")
+  - A list of key changes/features/fixes
 
 ### Step 6: Push and Create PR
 - Push the branch with `git push -u origin {branch} --tags`
 - Create a PR using `gh pr create` with a summary of changes. Make sure to fully analyze all changes for the PR description.
+
+### Step 6b: Create GitHub Release
+After the PR is merged and tag is pushed, create a GitHub Release:
+```bash
+gh release create v{version} --title "v{version} - {brief description}" --notes "## What's Changed
+
+- {Feature/Fix 1}
+- {Feature/Fix 2}
+- ...
+
+**Full Changelog**: https://github.com/Tarquinen/opencode-dynamic-context-pruning/compare/v{previous_version}...v{version}"
+```
+This provides a rich release page with:
+- A descriptive title
+- Bullet points of what changed
+- Automatic changelog link
 
 ### Step 7: Wait for CI
 Use `gh pr checks {pr_number} --watch` to wait for CI checks to complete.
@@ -71,6 +93,8 @@ Pull the latest changes and run `npm publish --access public`.
 
 ### Step 10: Verify
 Confirm the new version is live on npm with `npm view @tarquinen/opencode-dcp version`.
+
+Verify the GitHub release was created at: https://github.com/Tarquinen/opencode-dynamic-context-pruning/releases
 
 ## Guidelines
 - Use 30 second timeouts for bash commands unless waiting for CI

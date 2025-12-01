@@ -6,6 +6,8 @@ subtask: true
 
 Use git commands to commit and push changes. DO NOT create a script.
 
+Review all changes before committing. Ensure that the commit message is clear and descriptive.
+
 Arguments provided: "$ARGUMENTS"
 
 If an argument is provided above:

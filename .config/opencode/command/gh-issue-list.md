@@ -1,5 +1,7 @@
 ---
 description: List GitHub issues with filters using gh CLI
+agent: general
+subtask: true
 ---
 
 Use the bash tool to list GitHub issues with the gh CLI. Parse the arguments and execute the appropriate gh issue list command.
