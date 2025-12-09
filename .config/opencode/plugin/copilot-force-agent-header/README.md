@@ -34,16 +34,16 @@ Add to `~/.config/opencode/opencode.json`:
 ```json
 {
   "plugin": [
-    "opencode-copilot-auth@0.0.7",
-    "opencode-anthropic-auth@0.0.2",
+    "opencode-copilot-auth@0.0.8",
+    "opencode-anthropic-auth@0.0.4",
     "./plugin/copilot-force-agent-header"
   ]
 }
 ```
 
 **Note:** With `OPENCODE_DISABLE_DEFAULT_PLUGINS=1`, you must explicitly list:
-- `opencode-copilot-auth@0.0.7` - **Required** for this plugin (GitHub Copilot token management)
-- `opencode-anthropic-auth@0.0.2` - Optional, only if using Anthropic models directly (not through GitHub Copilot)
+- `opencode-copilot-auth@0.0.8` - **Required** for this plugin (GitHub Copilot token management)
+- `opencode-anthropic-auth@0.0.4` - Optional, only if using Anthropic models directly (not through GitHub Copilot)
 - This plugin must come **after** the auth plugins
 
 **4. Restart OpenCode**

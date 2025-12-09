@@ -16,6 +16,25 @@ const DEBUG_ENABLED = false // Set to true to enable debug logging
 const DEBUG_LOG = '/tmp/opencode-copilot-agent-header-debug.log'
 const USER_INITIATOR_RATIO = 0 // 1/X chance of "user" for first messages (<=0 disables and always uses "agent")
 
+// Responses API alternate input types (from copilot-auth 0.0.8)
+const RESPONSES_API_ALTERNATE_INPUT_TYPES = [
+    "file_search_call",
+    "computer_call",
+    "computer_call_output",
+    "web_search_call",
+    "function_call",
+    "function_call_output",
+    "image_generation_call",
+    "code_interpreter_call",
+    "local_shell_call",
+    "local_shell_call_output",
+    "mcp_list_tools",
+    "mcp_approval_request",
+    "mcp_approval_response",
+    "mcp_call",
+    "reasoning",
+]
+
 function log(message: string) {
     if (!DEBUG_ENABLED) return
     try {
@@ -65,10 +84,10 @@ const CopilotForceAgentHeader: Plugin = async ({ client }) => {
                 // Type assertion after runtime check
                 const info = authInfo as OAuth
 
-                // Set model costs to 0 (from copilot-auth)
+                // Set model costs to 0 (from copilot-auth 0.0.7)
                 if (provider && provider.models) {
                     for (const model of Object.values(provider.models)) {
-                        model.cost = { input: 0, output: 0 }
+                        model.cost = { input: 0, output: 0, cache: { read: 0, write: 0 } }
                     }
                 }
 
@@ -142,6 +161,8 @@ const CopilotForceAgentHeader: Plugin = async ({ client }) => {
                         const body = typeof init?.body === "string"
                             ? JSON.parse(init.body)
                             : init?.body
+                        
+                        // Check Chat Completions API format (messages array)
                         if (body?.messages) {
                             // Check if this is an ongoing conversation (has assistant/tool messages)
                             isAgentCall = body.messages.some(
@@ -153,6 +174,21 @@ const CopilotForceAgentHeader: Plugin = async ({ client }) => {
                                     Array.isArray(msg.content) &&
                                     msg.content.some((part: any) => part.type === "image_url"),
                             )
+                        }
+                        
+                        // Check Responses API format (input array) - from copilot-auth 0.0.8
+                        if (!isAgentCall && body?.input && Array.isArray(body.input)) {
+                            const lastInput = body.input[body.input.length - 1]
+                            const isAssistant = lastInput?.role === "assistant"
+                            const hasAgentType = lastInput?.type
+                                ? RESPONSES_API_ALTERNATE_INPUT_TYPES.includes(lastInput.type)
+                                : false
+                            isAgentCall = isAssistant || hasAgentType
+                            
+                            // Check for vision request in Responses API format
+                            if (Array.isArray(lastInput?.content)) {
+                                isVisionRequest = lastInput.content.some((part: any) => part.type === "input_image")
+                            }
                         }
                     } catch { }
 
@@ -189,6 +225,7 @@ const CopilotForceAgentHeader: Plugin = async ({ client }) => {
                     }
 
                     delete headers["x-api-key"]
+                    delete headers["authorization"]
 
                     log(`[FETCH] ✓ X-Initiator: ${initiator}`)
 
