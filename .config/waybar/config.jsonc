@@ -18,6 +18,8 @@
     "backlight",
     "network",
     "bluetooth",
+    "custom/mouse-battery",
+    "custom/headset-battery",
     "pulseaudio",
     "cpu",
     "battery"
@@ -188,6 +190,18 @@
     "return-type": "json"
   },
 
+  "custom/mouse-battery": {
+    "exec": "~/.config/waybar/scripts/bt-battery.sh 'G Pro' '󰍽' '󰍽' '󰍽'",
+    "return-type": "json",
+    "interval": 60,
+    "tooltip": true
+  },
+  "custom/headset-battery": {
+    "exec": "~/.config/waybar/scripts/bt-battery.sh 'WH-1000XM5' '󰋋' '󰋋' '󰋋'",
+    "return-type": "json",
+    "interval": 60,
+    "tooltip": true
+  },
   "mpris": {
     "format": "{player_icon} {artist} - {title}",
     "format-paused": "{status_icon} <i>{artist} - {title}</i>",

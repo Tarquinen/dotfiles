@@ -48,6 +48,8 @@ mpris.empty {
 #pulseaudio,
 #custom-omarchy,
 #custom-screenrecording-indicator,
+#custom-mouse-battery,
+#custom-headset-battery,
 #custom-update {
   background-color: @background;
   min-width: 12px;
@@ -117,4 +119,17 @@ tooltip {
 
 tooltip {
   border-radius: 10px;
+}
+
+#custom-mouse-battery.low,
+#custom-headset-battery.low {
+  color: #f38ba8;
+}
+
+#custom-mouse-battery.hidden,
+#custom-headset-battery.hidden {
+  background: transparent;
+  min-width: 0;
+  padding: 0;
+  margin: 0;
 }

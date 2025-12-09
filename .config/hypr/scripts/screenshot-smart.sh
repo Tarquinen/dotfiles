@@ -29,4 +29,7 @@ OUTPUT_DIR="$BASE_DIR/$YEAR/$MONTH"
 mkdir -p "$OUTPUT_DIR"
 
 OUTPUT_FILE="$OUTPUT_DIR/screenshot-$(date +'%Y-%m-%d_%H-%M-%S').png"
-grim -g "$SELECTION" "$OUTPUT_FILE" && wl-copy < "$OUTPUT_FILE" && notify-send "Screenshot saved and copied" "$OUTPUT_FILE" -t 2000
+grim -g "$SELECTION" "$OUTPUT_FILE" && wl-copy < "$OUTPUT_FILE" && {
+  echo "$OUTPUT_FILE" > /tmp/last-screenshot-path
+  notify-send "Screenshot Saved" "Click to open in Files"
+}
