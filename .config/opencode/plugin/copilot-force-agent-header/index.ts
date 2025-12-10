@@ -87,7 +87,7 @@ const CopilotForceAgentHeader: Plugin = async ({ client }) => {
                 // Set model costs to 0 (from copilot-auth 0.0.7)
                 if (provider && provider.models) {
                     for (const model of Object.values(provider.models)) {
-                        model.cost = { input: 0, output: 0, cache: { read: 0, write: 0 } }
+                        model.cost = { input: 0, output: 0, cache_read: 0, cache_write: 0 }
                     }
                 }
 
@@ -128,7 +128,7 @@ const CopilotForceAgentHeader: Plugin = async ({ client }) => {
 
                         if (!response.ok) {
                             log('[FETCH] Token refresh failed')
-                            return fetch(input, init)
+                            throw new Error(`Token refresh failed: ${response.status}`)
                         }
 
                         const tokenData = await response.json()
