@@ -64,3 +64,4 @@ If you detect opportunities to merge multiple closely related files into fewer f
   - they are being simplified alongside the refactor
 - You MUST update the user about your findings and possible candidates as you discover/rule them out
 - ALWAYS self vet the refactor target with an extra research validation pass once the plan is formulated
+- Do not use subagents for this task
